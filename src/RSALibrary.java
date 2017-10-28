@@ -79,7 +79,7 @@ public class RSALibrary {
 	/* Arguments: the ciphertext and the RSA private key. */
 	/* Returns a byte array with the plaintext. */
 	/***********************************************************************************/
-	public byte[] decrypt(byte[] ciphertext, PrivateKey key) {
+	public static byte[] decrypt(byte[] ciphertext, PrivateKey key) {
 		byte[] plaintext = null;
 
 		try {
@@ -129,7 +129,7 @@ public class RSALibrary {
     /* and the RSA public key */
     /* Returns TRUE if the signature was verified, false if not */
 	/***********************************************************************************/
-	public boolean verify(byte[] plaintext, byte[] signed, PublicKey key) {
+	public static boolean verify(byte[] plaintext, byte[] signed, PublicKey key) {
 		boolean result = false;
 
 		try {
