@@ -1,20 +1,31 @@
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.security.KeyFactory;
 import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Scanner;
 
 import javax.xml.bind.DatatypeConverter;
+
 
 public class SimpleSec {
 	RSALibrary rsaLibrary = new RSALibrary();
 	SymmetricCipher symmetricCipher = new SymmetricCipher();
 	// String to hold the name of the private key file.
 	public final String PRIVATE_KEY_FILE = "./private.key";
+	public final String PUBLIC_KEY_FILE = "./public.key";
+	public final String CIPHER_PRIVATE_KEY_FILE = "./ciphSK.txt";
+	public final String SIGNED_CIPHER_FILE = "./signedFile.txt";
 	
 	public void g() throws Exception {
+		//generate key pair
 		rsaLibrary.generateKeys();
+		//ask for password (will be used as AES key)s
 		String pwd = askPassword();
 		//Get private key 
 		PrivateKey sk = null;
@@ -23,24 +34,63 @@ public class SimpleSec {
 			sk = (PrivateKey) ois.readObject();
 		}
 		//Cipher SK with CBC
-		byte[] ciphSK = symmetricCipher.encryptCBC(pwd.getBytes(), sk.getEncoded());
+		byte[] ciphSK = symmetricCipher.encryptCBC(sk.getEncoded(),pwd.getBytes());
 		System.out.println("Ciphertext (hex): " + DatatypeConverter.printHexBinary(ciphSK));
-		//TODO: guardar srcFile en fichero
+		//Guardar  en fichero la clave privada cifrada
+		try (FileOutputStream fos = new FileOutputStream(CIPHER_PRIVATE_KEY_FILE);
+				ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+			oos.writeObject(ciphSK);
+		}
+		//TODO: Remove private key
+		
+		
 	}
 	
 	public void e(String srcFile, String destFile) throws Exception{
+		
+		// Read the public key. Will be used for encrypting
+		PublicKey pk = null;
+
+		try (FileInputStream fis = new FileInputStream(PUBLIC_KEY_FILE);
+				ObjectInputStream ois = new ObjectInputStream(fis)) {
+			pk = (PublicKey) ois.readObject();
+		}
 		//get sourceFile
-		PrivateKey ciphSK = null;
+		byte[] srcBytes = null;
 		try (FileInputStream fis = new FileInputStream(srcFile);
 				ObjectInputStream ois = new ObjectInputStream(fis)) {
-			ciphSK = (PrivateKey) ois.readObject();
+			srcBytes = (byte[]) (ois.readObject());
 		}
-		//ask for password
+		//file encryption with the public key 
+		byte[] encryptedSrcFile = RSALibrary.encrypt(srcBytes, pk);
+		
+		//For signing we need the encryptedSrcFile hash and sign it with our private key:
+		
+		//Ask for password
 		String pwd = askPassword();
-		//decipher SK
-		byte[] deciphSK = symmetricCipher.decryptCBC(ciphSK.getEncoded(), pwd.getBytes());
-		//TODO: no se qué hay que firmar, continuar
-		//sign
+		//Get encrypted privateKey
+		byte[] encryptedSK = null;
+		try (FileInputStream fis = new FileInputStream(CIPHER_PRIVATE_KEY_FILE);
+				ObjectInputStream ois = new ObjectInputStream(fis)) {
+			encryptedSK = (byte[]) (ois.readObject());
+		}
+		//Decipher PrivateKey
+		byte[] decryptedSK = symmetricCipher.decryptCBC(encryptedSK, pwd.getBytes());
+		//PrivateKey from bytes
+		KeyFactory kf = KeyFactory.getInstance("RSA");
+		PrivateKey sk = kf.generatePrivate(new PKCS8EncodedKeySpec(decryptedSK));
+		//Sign with sk
+		byte[] encryptedSrcFileSigned = RSALibrary.sign(encryptedSrcFile,sk);
+		//EncryptedSrcFile & encryptedSrcFileSigned concatenation
+		byte[] encryptedAndSignedSrc = null;
+		System.arraycopy(encryptedSrcFile, 0, encryptedAndSignedSrc, 0, encryptedSrcFile.length);
+		System.arraycopy(encryptedSrcFileSigned, 0, encryptedAndSignedSrc, encryptedSrcFile.length, encryptedSrcFileSigned.length);
+		//Save in file
+		try (FileOutputStream fos = new FileOutputStream(SIGNED_CIPHER_FILE);
+				ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+			oos.writeObject(encryptedSrcFileSigned);
+		}
+		
 	}
 	
 	private String askPassword() {

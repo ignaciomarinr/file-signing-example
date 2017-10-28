@@ -12,7 +12,7 @@ import javax.crypto.Cipher;
 
 public class RSALibrary {
 	// String to hold name of the encryption algorithm.
-	public final String ALGORITHM = "RSA";
+	public final static String ALGORITHM = "RSA";
 
 	// String to hold the name of the private key file.
 	public final String PRIVATE_KEY_FILE = "./private.key";
@@ -57,7 +57,7 @@ public class RSALibrary {
 	/* Arguments: the plaintext and the RSA public key. */
 	/* Returns a byte array with the ciphertext. */
 	/***********************************************************************************/
-	public byte[] encrypt(byte[] plaintext, PublicKey key) {
+	public static byte[] encrypt(byte[] plaintext, PublicKey key) {
 		byte[] ciphertext = null;
 
 		try {
@@ -101,7 +101,7 @@ public class RSALibrary {
 	/* Arguments: the plaintext and the RSA private key. */
 	/* Returns a byte array with the signature. */
 	/***********************************************************************************/
-	public byte[] sign(byte[] plaintext, PrivateKey key) {
+	public static byte[] sign(byte[] plaintext, PrivateKey key) {
 		byte[] signedInfo = null;
 
 		try {
