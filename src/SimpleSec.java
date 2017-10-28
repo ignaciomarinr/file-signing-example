@@ -39,8 +39,6 @@ public class SimpleSec {
 				ObjectOutputStream oos = new ObjectOutputStream(fos)) {
 			oos.writeObject(ciphSK);
 		}
-		//TODO: Remove private key
-		
 		
 	}
 	
