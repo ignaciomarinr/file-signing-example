@@ -12,7 +12,7 @@ import javax.crypto.Cipher;
 
 public class RSALibrary {
 	// String to hold name of the encryption algorithm.
-	public final static String ALGORITHM = "RSA";
+	public final String ALGORITHM = "RSA";
 
 	// String to hold the name of the private key file.
 	public final String PRIVATE_KEY_FILE = "./private.key";
@@ -57,7 +57,7 @@ public class RSALibrary {
 	/* Arguments: the plaintext and the RSA public key. */
 	/* Returns a byte array with the ciphertext. */
 	/***********************************************************************************/
-	public static byte[] encrypt(byte[] plaintext, PublicKey key) {
+	public byte[] encrypt(byte[] plaintext, PublicKey key) {
 		byte[] ciphertext = null;
 
 		try {
@@ -79,7 +79,7 @@ public class RSALibrary {
 	/* Arguments: the ciphertext and the RSA private key. */
 	/* Returns a byte array with the plaintext. */
 	/***********************************************************************************/
-	public static byte[] decrypt(byte[] ciphertext, PrivateKey key) {
+	public byte[] decrypt(byte[] ciphertext, PrivateKey key) {
 		byte[] plaintext = null;
 
 		try {
@@ -101,7 +101,7 @@ public class RSALibrary {
 	/* Arguments: the plaintext and the RSA private key. */
 	/* Returns a byte array with the signature. */
 	/***********************************************************************************/
-	public static byte[] sign(byte[] plaintext, PrivateKey key) {
+	public byte[] sign(byte[] plaintext, PrivateKey key) {
 		byte[] signedInfo = null;
 
 		try {
@@ -129,7 +129,7 @@ public class RSALibrary {
     /* and the RSA public key */
     /* Returns TRUE if the signature was verified, false if not */
 	/***********************************************************************************/
-	public static boolean verify(byte[] plaintext, byte[] signed, PublicKey key) {
+	public boolean verify(byte[] plaintext, byte[] signed, PublicKey key) {
 		boolean result = false;
 
 		try {
