@@ -2,6 +2,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -11,35 +13,47 @@ import java.util.Scanner;
 import javax.xml.bind.DatatypeConverter;
 
 public class SimpleSec {
-	RSALibrary rsaLibrary = new RSALibrary();
-	SymmetricCipher symmetricCipher = new SymmetricCipher();
+	// Ciphers.
+	private static final RSALibrary rsaLibrary = new RSALibrary();
+	private static final SymmetricCipher symmetricCipher = new SymmetricCipher();
+	
 	// String to hold the name of the private key file.
-	public final String PRIVATE_KEY_FILE = "./private.key";
-	public final String PUBLIC_KEY_FILE = "./public.key";
+	private static final String privateKeyFile = "./private.key";
+	
+	// String to hold name of the public key file.
+	private static final String publicKeyFile = "./public.key";
 
-	public void g() throws Exception {
-		// generate key pair
+	private static void g() throws Exception {
+		// Ask for password (will be used as AES key).
+		// TODO control exceptions, good password.
+		byte[] pwd = askPassword().getBytes("UTF-8");
+		
+		// Generate key pair.
+		// TODO control exceptions.
 		rsaLibrary.generateKeys();
-		// ask for password (will be used as AES key)s
-		String pwd = askPassword();
-		// Get private key
-		PrivateKey sk = null;
-		try (FileInputStream fis = new FileInputStream(PRIVATE_KEY_FILE);
-				ObjectInputStream ois = new ObjectInputStream(fis)) {
-			sk = (PrivateKey) ois.readObject();
-		}
-		// Cipher SK with CBC
-		byte[] ciphSK = symmetricCipher.encryptCBC(sk.getEncoded(), pwd.getBytes());
-		System.out.println("Ciphertext (hex): " + DatatypeConverter.printHexBinary(ciphSK));
-		// Guardar en fichero la clave privada cifrada
-		try (FileOutputStream fos = new FileOutputStream(PRIVATE_KEY_FILE);
+		
+		// Read the private key.
+		// TODO control exceptions.
+		byte[] skFileBytes = Files.readAllBytes(Paths.get(privateKeyFile));
+		
+		// Cipher the private key with AES-CBC.
+		byte[] ciphSk = symmetricCipher.encryptCBC(skFileBytes, pwd);
+		
+		// TODO comment for release.
+		System.out.println("Ciphered sk (hex): " + DatatypeConverter.printHexBinary(ciphSk));
+		
+		/*
+		 *  Store the private key in the file privateKeyFile (overwriting previous
+		 *  clear private key file.
+		 *  TODO control exceptions.
+		 */
+		try (FileOutputStream fos = new FileOutputStream(privateKeyFile);
 				ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-			oos.writeObject(ciphSK);
+			oos.writeObject(ciphSk);
 		}
-
 	}
 
-	public void e(String srcFile, String destFile) throws Exception {
+	public static void e(String srcFile, String destFile) throws Exception {
 
 		// Read the public key. Will be used for encrypting
 		PublicKey pk = getPK();
@@ -72,7 +86,7 @@ public class SimpleSec {
 
 	}
 
-	public void d(String srcFile, String destFile) throws Exception {
+	public static void d(String srcFile, String destFile) throws Exception {
 		// Read srcFile
 		byte[] srcBytes = null;
 		try (FileInputStream fis = new FileInputStream(srcFile); ObjectInputStream ois = new ObjectInputStream(fis)) {
@@ -99,12 +113,12 @@ public class SimpleSec {
 
 	}
 
-	private PrivateKey decryptSK() throws Exception {
+	private static PrivateKey decryptSK() throws Exception {
 		// Ask for password
 		String pwd = askPassword();
 		// Get encrypted privateKey
 		byte[] encryptedSK = null;
-		try (FileInputStream fis = new FileInputStream(PRIVATE_KEY_FILE);
+		try (FileInputStream fis = new FileInputStream(privateKeyFile);
 				ObjectInputStream ois = new ObjectInputStream(fis)) {
 			encryptedSK = (byte[]) (ois.readObject());
 		}
@@ -116,26 +130,26 @@ public class SimpleSec {
 		return sk;
 	}
 
-	private PublicKey getPK() throws Exception {
+	private static PublicKey getPK() throws Exception {
 		PublicKey pk = null;
 
-		try (FileInputStream fis = new FileInputStream(PUBLIC_KEY_FILE);
+		try (FileInputStream fis = new FileInputStream(publicKeyFile);
 				ObjectInputStream ois = new ObjectInputStream(fis)) {
 			pk = (PublicKey) ois.readObject();
 		}
 		return pk;
 	}
 
-	private String askPassword() {
-		Scanner reader = new Scanner(System.in); // Reading from System.in
-		System.out.println("Introduzca contraseÃ±a: ");
-		String n = reader.nextLine(); // Scans the next token of the input as an int.
-		// once finished
-		reader.close();
-		return n;
+	private static String askPassword() {
+		System.out.print("Introduzca la contraseña de la clave privada: ");
+	
+		// TODO control exceptions.
+		try (Scanner inScanner = new Scanner(System.in)) {
+			return inScanner.nextLine();
+		}
 	}
 
-	public static void main(String[] args) {
-
+	public static void main(String[] args) throws Exception {
+		g();
 	}
 }
