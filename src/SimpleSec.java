@@ -2,6 +2,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
@@ -25,8 +26,7 @@ public class SimpleSec {
 
 	private static void g() throws Exception {
 		// Ask for password (will be used as AES key).
-		// TODO control exceptions, good password.
-		byte[] pwd = askPassword().getBytes("UTF-8");
+		byte[] pwd = askSkPassword();
 		
 		// Generate key pair.
 		// TODO control exceptions.
@@ -115,7 +115,7 @@ public class SimpleSec {
 
 	private static PrivateKey decryptSK() throws Exception {
 		// Ask for password
-		String pwd = askPassword();
+		byte[] pwd = askSkPassword();
 		// Get encrypted privateKey
 		byte[] encryptedSK = null;
 		try (FileInputStream fis = new FileInputStream(privateKeyFile);
@@ -123,7 +123,7 @@ public class SimpleSec {
 			encryptedSK = (byte[]) (ois.readObject());
 		}
 		// Decipher PrivateKey
-		byte[] decryptedSK = symmetricCipher.decryptCBC(encryptedSK, pwd.getBytes());
+		byte[] decryptedSK = symmetricCipher.decryptCBC(encryptedSK, pwd);
 		// PrivateKey from bytes
 		KeyFactory kf = KeyFactory.getInstance("RSA");
 		PrivateKey sk = kf.generatePrivate(new PKCS8EncodedKeySpec(decryptedSK));
@@ -140,12 +140,25 @@ public class SimpleSec {
 		return pk;
 	}
 
-	private static String askPassword() {
-		System.out.print("Introduzca la contraseña de la clave privada: ");
-	
-		// TODO control exceptions.
+	private static byte[] askSkPassword() {
 		try (Scanner inScanner = new Scanner(System.in)) {
-			return inScanner.nextLine();
+			byte[] pwd;
+			
+			do {
+				System.out.print("Introduzca la contraseña de la clave privada: ");
+				
+				try {
+					pwd = inScanner.nextLine().getBytes("UTF-8");
+				} catch (UnsupportedEncodingException e) {
+					System.err.println("Error: La contraseña debe poderse codificar en UTF-8");
+					pwd = new byte[0];
+				}
+				
+				if (pwd.length != 16)
+					System.err.println("Error: La contraseña debe ocupar 16 bytes en UTF-8");
+			} while (pwd.length != 16);
+			
+			return pwd;
 		}
 	}
 
