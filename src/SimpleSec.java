@@ -1,5 +1,6 @@
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.UnsupportedEncodingException;
@@ -11,45 +12,59 @@ import java.security.PublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Scanner;
 
-import javax.xml.bind.DatatypeConverter;
-
 public class SimpleSec {
 	// Ciphers.
 	private static final RSALibrary rsaLibrary = new RSALibrary();
 	private static final SymmetricCipher symmetricCipher = new SymmetricCipher();
-	
+
 	// String to hold the name of the private key file.
 	private static final String privateKeyFile = "./private.key";
-	
+
 	// String to hold name of the public key file.
 	private static final String publicKeyFile = "./public.key";
 
-	private static void g() throws Exception {
+	private static void g() {
 		// Ask for password (will be used as AES key).
 		byte[] pwd = askSkPassword();
-		
+
 		// Generate key pair.
-		// TODO control exceptions.
-		rsaLibrary.generateKeys();
-		
+		try {
+			rsaLibrary.generateKeys();
+		} catch (IOException e) {
+			System.err.println("Error - no es posible escribir los ficheros de las claves en disco:");
+			System.err.println(e.getMessage());
+			System.exit(-1);
+		}
+
 		// Read the private key.
-		// TODO control exceptions.
-		byte[] skFileBytes = Files.readAllBytes(Paths.get(privateKeyFile));
-		
+		byte[] skFileBytes = null;
+		try {
+			skFileBytes = Files.readAllBytes(Paths.get(privateKeyFile));
+		} catch (IOException e) {
+			System.err.println("Error - no es posible escribir los ficheros de las claves en disco:");
+			System.err.println(e.getMessage());
+			System.exit(-1);
+		}
+
 		// Cipher the private key with AES-CBC.
-		byte[] ciphSk = symmetricCipher.encryptCBC(skFileBytes, pwd);
-		
-		// TODO comment for release.
-		System.out.println("Ciphered sk (hex): " + DatatypeConverter.printHexBinary(ciphSk));
-		
-		/*
-		 *  Store the private key in the file privateKeyFile (overwriting previous
-		 *  clear private key file.
-		 *  TODO control exceptions.
-		 */
+		byte[] ciphSk = null;
+		try {
+			ciphSk = symmetricCipher.encryptCBC(skFileBytes, pwd);
+		} catch (Exception e) {
+			System.err.println("Error al cifrar la clave privada:");
+			System.err.println(e.getMessage());
+			System.exit(-1);
+		}
+
+		// Store the private key in the file privateKeyFile (overwriting previous clear
+		// private key file).
 		try (FileOutputStream fos = new FileOutputStream(privateKeyFile);
 				ObjectOutputStream oos = new ObjectOutputStream(fos)) {
 			oos.writeObject(ciphSk);
+		} catch (IOException e) {
+			System.err.println("Error - no posible escribir el fichero cifrado de la clave privada en disco:");
+			System.err.println(e.getMessage());
+			System.exit(-1);
 		}
 	}
 
@@ -143,26 +158,50 @@ public class SimpleSec {
 	private static byte[] askSkPassword() {
 		try (Scanner inScanner = new Scanner(System.in)) {
 			byte[] pwd;
-			
+
 			do {
 				System.out.print("Introduzca la contraseña de la clave privada: ");
-				
+
 				try {
 					pwd = inScanner.nextLine().getBytes("UTF-8");
 				} catch (UnsupportedEncodingException e) {
-					System.err.println("Error: La contraseña debe poderse codificar en UTF-8");
+					System.err.println("Error - la contraseña debe poderse codificar en UTF-8:");
+					System.err.println(e.getMessage());
 					pwd = new byte[0];
+					continue;
 				}
-				
+
 				if (pwd.length != 16)
 					System.err.println("Error: La contraseña debe ocupar 16 bytes en UTF-8");
 			} while (pwd.length != 16);
-			
+
 			return pwd;
 		}
 	}
 
-	public static void main(String[] args) throws Exception {
-		g();
+	// TODO throws Exception.
+	public static void main(String[] args) throws Exception{
+		// Arguments.
+		String command = args.length >= 1 ? args[0] : "g",
+				sourceFile = args.length >= 2 ? args[1] : "in.txt",
+				destinationFile = args.length >= 3 ? args[2] : "out.txt";
+
+		switch (command) {
+			case "g":
+				g();
+				break;
+				
+			case "e":
+				e(sourceFile, destinationFile);
+				break;
+				
+			case "d":
+				d(sourceFile, destinationFile);
+				break;
+	
+			default:
+				System.err.println("Usage: java -jar SimpleSec.jar g|e|d [sourceFile] [destinationFile]");
+				break;
+		}
 	}
 }
