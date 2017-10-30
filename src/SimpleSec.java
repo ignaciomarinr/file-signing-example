@@ -7,10 +7,14 @@ import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Scanner;
+
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 
 public class SimpleSec {
 	// Ciphers.
@@ -46,10 +50,10 @@ public class SimpleSec {
 			System.exit(-1);
 		}
 
-		// Cipher the private key with AES-CBC.
-		byte[] ciphSk = null;
+		// Encrypt the private key with AES-CBC.
+		byte[] encSk = null;
 		try {
-			ciphSk = symmetricCipher.encryptCBC(skFileBytes, pwd);
+			encSk = symmetricCipher.encryptCBC(skFileBytes, pwd);
 		} catch (Exception e) {
 			System.err.println("Error al cifrar la clave privada:");
 			System.err.println(e.getMessage());
@@ -60,7 +64,7 @@ public class SimpleSec {
 		// private key file).
 		try (FileOutputStream fos = new FileOutputStream(privateKeyFile);
 				ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-			oos.writeObject(ciphSk);
+			oos.writeObject(encSk);
 		} catch (IOException e) {
 			System.err.println("Error - no posible escribir el fichero cifrado de la clave privada en disco:");
 			System.err.println(e.getMessage());
@@ -68,11 +72,33 @@ public class SimpleSec {
 		}
 	}
 
-	public static void e(String srcFile, String destFile) throws Exception {
+	// TODO throws Exception.
+	private static void e(String srcFile, String destFile) {
+		byte[] srcFileBytes = null;
+		try {
+			srcFileBytes = Files.readAllBytes(Paths.get(srcFile));
+		} catch (IOException e) {
+			System.err.println("Error - no es posible leer el fichero de entrada:");
+			System.err.println(e.getMessage());
+			System.exit(-1);
+		}
+		
+		SecureFile secFile = new SecureFile();
+		byte[] sessionKey = getSessionKey();
+		
+		// Encrypt the source file with AES-CBC.
+		try {
+			secFile.encFile = symmetricCipher.encryptCBC(srcFileBytes, sessionKey);
+		} catch (Exception e) {
+			System.err.println("Error al cifrar el fichero de entrada con la clave de sesión:");
+			System.err.println(e.getMessage());
+			System.exit(-1);
+		}
+		
+		// Read the public key. Will be used for encrypting the session key.
+		PublicKey pk = getPk();
 
-		// Read the public key. Will be used for encrypting
-		PublicKey pk = getPK();
-
+		/*
 		// get sourceFile
 		byte[] srcBytes = null;
 		try (FileInputStream fis = new FileInputStream(srcFile); ObjectInputStream ois = new ObjectInputStream(fis)) {
@@ -84,7 +110,7 @@ public class SimpleSec {
 		// For signing we need the encryptedSrcFile hash and sign it with our private
 		// key:
 
-		PrivateKey sk = decryptSK();
+		PrivateKey sk = getSk();
 
 		// Sign with sk
 		byte[] encryptedSrcFileSigned = rsaLibrary.sign(encryptedSrcFile, sk);
@@ -98,10 +124,10 @@ public class SimpleSec {
 				ObjectOutputStream oos = new ObjectOutputStream(fos)) {
 			oos.writeObject(encryptedSrcFileSigned);
 		}
-
+		*/
 	}
 
-	public static void d(String srcFile, String destFile) throws Exception {
+	private static void d(String srcFile, String destFile) throws Exception {
 		// Read srcFile
 		byte[] srcBytes = null;
 		try (FileInputStream fis = new FileInputStream(srcFile); ObjectInputStream ois = new ObjectInputStream(fis)) {
@@ -114,8 +140,8 @@ public class SimpleSec {
 		System.arraycopy(srcBytes, srcBytes.length - 128, sig, 0, 128);
 
 		// get Sk and sk
-		PrivateKey sk = decryptSK();
-		PublicKey pk = getPK();
+		PrivateKey sk = getSk();
+		PublicKey pk = getPk();
 		// Verify signature
 		rsaLibrary.verify(cipheredText, sig, pk);
 		// Decipher cipheredText
@@ -128,7 +154,7 @@ public class SimpleSec {
 
 	}
 
-	private static PrivateKey decryptSK() throws Exception {
+	private static PrivateKey getSk() throws Exception {
 		// Ask for password
 		byte[] pwd = askSkPassword();
 		// Get encrypted privateKey
@@ -145,14 +171,39 @@ public class SimpleSec {
 		return sk;
 	}
 
-	private static PublicKey getPK() throws Exception {
+	private static PublicKey getPk() {
 		PublicKey pk = null;
-
+		
 		try (FileInputStream fis = new FileInputStream(publicKeyFile);
 				ObjectInputStream ois = new ObjectInputStream(fis)) {
 			pk = (PublicKey) ois.readObject();
+		} catch (ClassNotFoundException e) {
+			System.err.println("Error - el fichero de clave pública no tiene el formato correcto:");
+			System.err.println(e.getMessage());
+			System.exit(-1);
+		} catch (IOException e) {
+			System.err.println("Error - no posible leer el fichero de la clave pública:");
+			System.err.println(e.getMessage());
+			System.exit(-1);
 		}
+		
 		return pk;
+	}
+	
+	private static byte[] getSessionKey() {
+		KeyGenerator kg = null;
+
+		try {
+			kg = KeyGenerator.getInstance("AES");
+		} catch (NoSuchAlgorithmException e) {
+			System.err.println("Error - no es posible obtener el algoritmo AES para generar una clave de sesión:");
+			System.err.println(e.getMessage());
+			System.exit(-1);
+		}
+
+		kg.init(128);
+
+		return kg.generateKey().getEncoded();
 	}
 
 	private static byte[] askSkPassword() {
@@ -182,6 +233,7 @@ public class SimpleSec {
 	// TODO throws Exception.
 	public static void main(String[] args) throws Exception{
 		// Arguments.
+		// TODO check paths formats.
 		String command = args.length >= 1 ? args[0] : "g",
 				sourceFile = args.length >= 2 ? args[1] : "in.txt",
 				destinationFile = args.length >= 3 ? args[2] : "out.txt";
