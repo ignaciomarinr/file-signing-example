@@ -1,6 +1,7 @@
 *.pdf
 *~
 *.key
+*.txt
 
 
 # Created by https://www.gitignore.io/api/java,eclipse
