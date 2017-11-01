@@ -113,31 +113,51 @@ public class SimpleSec {
 		}
 	}
 
-	private static void d(String srcFile, String destFile) throws Exception {
-		// Read srcFile
-		byte[] srcBytes = null;
-		try (FileInputStream fis = new FileInputStream(srcFile); ObjectInputStream ois = new ObjectInputStream(fis)) {
-			srcBytes = (byte[]) (ois.readObject());
+	private static void d(String sourceFile, String destinationFile) {
+		// Read secured input file.
+		SecureFile secFile = null;
+		try (FileInputStream fis = new FileInputStream(sourceFile);
+				ObjectInputStream ois = new ObjectInputStream(fis)) {
+			secFile = (SecureFile) ois.readObject();
+		} catch (ClassNotFoundException e) {
+			System.err.println("Error - el fichero de entrada securizado no tiene el formato correcto:");
+			System.err.println(e.getMessage());
+			System.exit(-1);
+		} catch (IOException e) {
+			System.err.println("Error - no posible leer el fichero de entrada securizado:");
+			System.err.println(e.getMessage());
+			System.exit(-1);
 		}
-		// Last 128 bytes are the signature
-		byte[] cipheredText = null;
-		byte[] sig = null;
-		System.arraycopy(srcBytes, 0, cipheredText, 0, srcBytes.length - 128);
-		System.arraycopy(srcBytes, srcBytes.length - 128, sig, 0, 128);
-
-		// get Sk and sk
-		PrivateKey sk = getSk();
-		PublicKey pk = getPk();
-		// Verify signature
-		rsaLibrary.verify(cipheredText, sig, pk);
-		// Decipher cipheredText
-		byte[] decryptedText = rsaLibrary.decrypt(cipheredText, sk);
-		// Write in file
-		try (FileOutputStream fos = new FileOutputStream(destFile);
-				ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-			oos.writeObject(decryptedText);
+		
+		// Verify the sign.
+		byte[] dataToVerify = new byte[secFile.encFile.length + secFile.encSessionKey.length];
+		System.arraycopy(secFile.encFile, 0, dataToVerify, 0, secFile.encFile.length);
+		System.arraycopy(secFile.encSessionKey, 0, dataToVerify, secFile.encFile.length, secFile.encSessionKey.length);
+		
+		if (!rsaLibrary.verify(dataToVerify, secFile.sign, getPk())) {
+			System.err.println("La firma del fichero securizado es errónea.");
+			System.exit(-1);
 		}
-
+		
+		// Decrypt the secured file with AES-CBC.
+		byte[] dtsFileBytes = null;
+		try {
+			dtsFileBytes = symmetricCipher.decryptCBC(secFile.encFile,
+					rsaLibrary.decrypt(secFile.encSessionKey, getSk()));
+		} catch (Exception e) {
+			System.err.println("Error al descifrar el fichero securizado con la clave de sesión:");
+			System.err.println(e.getMessage());
+			System.exit(-1);
+		}
+		
+		// Save the decrypted secured file in destinationFile.
+		try {
+			Files.write(Paths.get(destinationFile), dtsFileBytes);
+		} catch (IOException e) {
+			System.err.println("Error - no posible escribir el fichero securizado descifrado en disco:");
+			System.err.println(e.getMessage());
+			System.exit(-1);
+		}
 	}
 
 	private static PrivateKey getSk() {
@@ -243,8 +263,7 @@ public class SimpleSec {
 		}
 	}
 
-	// TODO throws Exception.
-	public static void main(String[] args) throws Exception{
+	public static void main(String[] args) {
 		// Arguments.
 		// TODO check paths formats.
 		String command = args.length >= 1 ? args[0] : "g",
