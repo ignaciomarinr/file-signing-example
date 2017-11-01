@@ -68,6 +68,7 @@ public class SimpleSec {
 			System.err.println(e.getMessage());
 			System.exit(-1);
 		}
+		System.out.println("GeneraciÃ³n de claves finalizada");
 	}
 
 	private static void e(String sourceFile, String destinationFile) {
@@ -87,7 +88,7 @@ public class SimpleSec {
 		try {
 			secFile.encFile = symmetricCipher.encryptCBC(srcFileBytes, sessionKey);
 		} catch (Exception e) {
-			System.err.println("Error al cifrar el fichero de entrada con la clave de sesión:");
+			System.err.println("Error al cifrar el fichero de entrada con la clave de sesiï¿½n:");
 			System.err.println(e.getMessage());
 			System.exit(-1);
 		}
@@ -111,6 +112,7 @@ public class SimpleSec {
 			System.err.println(e.getMessage());
 			System.exit(-1);
 		}
+		System.out.println("Archivo cifrado con Ã©xito");
 	}
 
 	private static void d(String sourceFile, String destinationFile) {
@@ -135,7 +137,7 @@ public class SimpleSec {
 		System.arraycopy(secFile.encSessionKey, 0, dataToVerify, secFile.encFile.length, secFile.encSessionKey.length);
 		
 		if (!rsaLibrary.verify(dataToVerify, secFile.sign, getPk())) {
-			System.err.println("La firma del fichero securizado es errónea.");
+			System.err.println("La firma del fichero securizado es errï¿½nea.");
 			System.exit(-1);
 		}
 		
@@ -145,7 +147,7 @@ public class SimpleSec {
 			dtsFileBytes = symmetricCipher.decryptCBC(secFile.encFile,
 					rsaLibrary.decrypt(secFile.encSessionKey, getSk()));
 		} catch (Exception e) {
-			System.err.println("Error al descifrar el fichero securizado con la clave de sesión:");
+			System.err.println("Error al descifrar el fichero securizado con la clave de sesiï¿½n:");
 			System.err.println(e.getMessage());
 			System.exit(-1);
 		}
@@ -158,6 +160,7 @@ public class SimpleSec {
 			System.err.println(e.getMessage());
 			System.exit(-1);
 		}
+		System.out.println("Archivo descifrado con Ã©xito");
 	}
 
 	private static PrivateKey getSk() {
@@ -211,11 +214,11 @@ public class SimpleSec {
 				ObjectInputStream ois = new ObjectInputStream(fis)) {
 			pk = (PublicKey) ois.readObject();
 		} catch (ClassNotFoundException e) {
-			System.err.println("Error - el fichero de clave pública no tiene el formato correcto:");
+			System.err.println("Error - el fichero de clave pï¿½blica no tiene el formato correcto:");
 			System.err.println(e.getMessage());
 			System.exit(-1);
 		} catch (IOException e) {
-			System.err.println("Error - no posible leer el fichero de la clave pública:");
+			System.err.println("Error - no posible leer el fichero de la clave pï¿½blica:");
 			System.err.println(e.getMessage());
 			System.exit(-1);
 		}
@@ -229,7 +232,7 @@ public class SimpleSec {
 		try {
 			kg = KeyGenerator.getInstance("AES");
 		} catch (NoSuchAlgorithmException e) {
-			System.err.println("Error - no es posible obtener el algoritmo AES para generar una clave de sesión:");
+			System.err.println("Error - no es posible obtener el algoritmo AES para generar una clave de sesiï¿½n:");
 			System.err.println(e.getMessage());
 			System.exit(-1);
 		}
@@ -244,21 +247,21 @@ public class SimpleSec {
 			byte[] pwd;
 
 			do {
-				System.out.print("Introduzca la contraseña de la clave privada: ");
+				System.out.print("Introduzca la contraseï¿½a de la clave privada: ");
 
 				try {
 					pwd = inScanner.nextLine().getBytes("UTF-8");
 				} catch (UnsupportedEncodingException e) {
-					System.err.println("Error - la contraseña debe poderse codificar en UTF-8:");
+					System.err.println("Error - la contraseï¿½a debe poderse codificar en UTF-8:");
 					System.err.println(e.getMessage());
 					pwd = new byte[0];
 					continue;
 				}
 
 				if (pwd.length != 16)
-					System.err.println("Error: La contraseña debe ocupar 16 bytes en UTF-8");
+					System.err.println("Error: La contraseï¿½a debe ocupar 16 bytes en UTF-8");
 			} while (pwd.length != 16);
-
+			
 			return pwd;
 		}
 	}
